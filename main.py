@@ -51,15 +51,16 @@ plt.show()
 
 
 delay_samples = np.argmax(np.real(corr)**2 + np.imag(corr)**2)
-print(f"Delay found (excluding base delay): {delay_samples} samples or {delay_samples /  (2.5*1e6)} seconds")
+print(f"Delay found (after base delay): {delay_samples} samples or {delay_samples /  (2.5*1e6)} seconds")
 
 
-nrchan = int(2**16)
-t = nrchan / (2.5*1e6)
-print(f"FFT window: {nrchan} samples or {t} seconds")
+nrchan = 2**15#int(2**16)
+t_in_chan = nrchan / (2.5*1e6)
+print(f"FFT window: {nrchan} samples or {t_in_chan} seconds")
 
 #make the total number of samples a multiple of the size of the FFT window
-nr_samples = int(5*(2.5*1e6) - 5*(2.5*1e6)%nrchan)
+measure_time = 30 #seconds
+nr_samples = int(measure_time*(2.5*1e6) - measure_time*(2.5*1e6)%nrchan)
 
 data1_5sec = np.fromfile(filename1, dtype=np.complex64, count=nr_samples, offset=base_offset*8 + delay_samples*8)
 data2_5sec = np.fromfile(filename1, dtype=np.complex64, count=nr_samples, offset=base_offset*8)
@@ -70,31 +71,44 @@ data2_5sec = data2_5sec.reshape(int(nr_samples/nrchan), nrchan)
 FFT1 = np.fft.fft(data1_5sec, axis=1)
 FFT2 = np.fft.fft(data2_5sec, axis=1)
 
-
-plt.plot(np.fft.fftfreq(len(FFT1[0])), np.real(FFT1[0]))
-plt.title("FFT of single window of data")
+plt.plot(range(len(FFT1[0])), np.real(FFT1[0]))
+plt.title("Real part of FFT not FFTshifted")
 plt.show()
 
-#remove the giant peak from the clock for better result
-FFT1[:, -1] = 0
-FFT2[:, -1] = 0
+FFT1 = np.fft.fftshift(FFT1)
+FFT2 = np.fft.fftshift(FFT2)
 
-plt.plot(np.fft.fftfreq(len(FFT1[0])), np.real(FFT1[0]))
-plt.title("Real part of FFT of data1 after removing clock peak")
+freqs = np.fft.fftshift(np.fft.fftfreq(len(FFT1[0])))
+
+
+plt.plot(freqs, np.real(FFT1[0]))
+plt.title("Real part of FFT, shifted")
 plt.show()
-plt.plot(np.fft.fftfreq(len(FFT1[0])), np.imag(FFT1[0]))
-plt.title("Imaginary part of FFT of data1 after removing clock peak")
-plt.show()
-plt.plot(np.fft.fftfreq(len(FFT1[0])), np.real(FFT2[0]))
-plt.title("Real part of FFT of data2 after removing clock peak")
-plt.show()
-plt.plot(np.fft.fftfreq(len(FFT1[0])), np.imag(FFT2[0]))
-plt.title("Imaginary part of FFT of data2 after removing clock peak")
-plt.show()
+
+
+# plt.plot(freqs, np.real(FFT1[0]))
+# plt.title("Real part of FFT of single window of data1 without clock peak")
+# plt.show()
+# plt.plot(freqs, np.imag(FFT1[0]))
+# plt.title("Imaginary part of FFT of single window of data1 without clock peak")
+# plt.show()
+# plt.plot(freqs, np.real(FFT2[0]))
+# plt.title("Real part of FFT of single window of data2 after removing clock peak")
+# plt.show()
+# plt.plot(freqs, np.imag(FFT2[0]))
+# plt.title("Imaginary part of FFT of single window of data2 without clock peak")
+# plt.show()
 
 
 
 autocorrelation = np.mean(FFT1 * np.conj(FFT1), axis=0)
+
+# interpolate the clock peak
+iprange = 20
+left_index = np.argmax(autocorrelation)-iprange
+right_index = np.argmax(autocorrelation)+iprange
+autocorrelation[left_index:right_index] = np.linspace(autocorrelation[left_index], autocorrelation[right_index], 2*iprange)
+
 plt.plot(np.linspace(1420 - 1.25, 1420 + 1.25, len(autocorrelation)), np.real(autocorrelation))
 plt.title("Autocorrelation test real (should be like assignment 1?)")
 plt.show()
@@ -102,20 +116,29 @@ plt.plot(np.linspace(1420 - 1.25, 1420 + 1.25, len(autocorrelation)), np.imag(au
 plt.title("Autocorrelation test imag (should be like assignment 1?)")
 plt.show()
 
-
 crosscorr = np.mean(FFT1 * np.conj(FFT2), axis=0)
+# plt.plot(np.linspace(1420 - 1.25, 1420 + 1.25, len(crosscorr)), np.real(crosscorr))
+# plt.title(f"Real part of cross correlation of FFTs averaged over {measure_time} seconds")
+# plt.show()
+# plt.plot(np.linspace(1420 - 1.25, 1420 + 1.25, len(crosscorr)), np.imag(crosscorr))
+# plt.title(f"Imaginary part of cross correlation of FFTs averaged over {measure_time} seconds")
+# plt.show()
+plt.plot(np.linspace(1420 - 1.25, 1420 + 1.25, len(crosscorr)), np.abs(crosscorr))
+plt.title(f"Magnitude of cross correlation of FFTs averaged over {measure_time} seconds")
+plt.show()
+
+
+iprange = 30
+left_index = np.argmax(np.abs(crosscorr))-iprange
+right_index = np.argmax(np.abs(crosscorr))+iprange
+crosscorr[left_index:right_index] = np.linspace(crosscorr[left_index], crosscorr[right_index], 2*iprange)
+
 plt.plot(np.linspace(1420 - 1.25, 1420 + 1.25, len(crosscorr)), np.real(crosscorr))
-plt.title("Real part of cross correlation of FFTs averaged over 5 seconds")
+plt.title(f"Real part of cross correlation of FFTs averaged over {measure_time} seconds")
 plt.show()
 plt.plot(np.linspace(1420 - 1.25, 1420 + 1.25, len(crosscorr)), np.imag(crosscorr))
-plt.title("Imaginary part of cross correlation of FFTs averaged over 5 seconds")
+plt.title(f"Imaginary part of cross correlation of FFTs averaged over {measure_time} seconds")
 plt.show()
-
-
-result = np.fft.ifft(crosscorr)
-plt.plot(np.fft.fftfreq(len(result)), np.real(result))
-plt.title("Inverse FFT of cross correlation, real")
-plt.show()
-plt.plot(np.fft.fftfreq(len(result)), np.imag(result))
-plt.title("Inverse FFT of cross correlation, imaginary")
+plt.plot(np.linspace(1420 - 1.25, 1420 + 1.25, len(crosscorr)), np.abs(crosscorr))
+plt.title(f"Magnitude of cross correlation of FFTs averaged over {measure_time} seconds")
 plt.show()
