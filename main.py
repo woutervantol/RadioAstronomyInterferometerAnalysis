@@ -49,7 +49,7 @@ delayx1 = x[base_offset:base_offset + delaysize1]
 
 plt.plot(delayx1, delaydata1)
 plt.title(f"Raw data example shifted by {base_offset / sample_freq:.3f} seconds to remove artifact")
-plt.xlabel("Seconds")
+plt.xlabel("Delay [sec]")
 plt.savefig("reportplots/rawdatashifted", dpi=300)
 plt.show()
 
@@ -57,23 +57,23 @@ plt.show()
 print(f"Find delay using {delaysize1/sample_freq} of antenna 1 and {delaysize2/sample_freq} of antenna 2")
 
 corr = signal.correlate(delaydata1, delaydata2, mode="valid") #mode valid means no zero padding at the beginning and end
-corrx = x[base_offset:base_offset + delaysize1 - delaysize2 + 1]
+corrx = x[base_offset:base_offset + delaysize1 - delaysize2 + 1] #! would be good to have +/- a few secs
 
 plt.plot(corrx, np.real(corr))
 plt.title("Real part of correlation")
-plt.xlabel("Seconds")
+plt.xlabel("Delay [sec]")
 plt.savefig("reportplots/realcorr", dpi=300)
 plt.show()
 
 plt.plot(corrx, np.imag(corr))
 plt.title("Imaginary part of correlation")
-plt.xlabel("Seconds")
+plt.xlabel("Delay [sec]")
 plt.savefig("reportplots/imagcorr", dpi=300)
 plt.show()
 
 plt.plot(corrx, np.real(corr)**2 + np.imag(corr)**2)
 plt.title(f"Real(corr)$^2$ + Imag(corr)$^2$")
-plt.xlabel("Seconds")
+plt.xlabel("Delay [sec]")
 plt.savefig("reportplots/magcorr", dpi=300)
 plt.show()
 
@@ -82,10 +82,11 @@ print(f"Delay found (after base delay): {delay_samples} samples or {delay_sample
 
 delaydata1 = data1[base_offset + delay_samples:base_offset + delaysize1 + delay_samples]
 delaydata2 = data2[base_offset:base_offset + delaysize2]
-corr = signal.correlate(delaydata1, delaydata2, mode="valid")
+corr = np.correlate(delaydata1, delaydata2, mode="full")
 plt.plot(corrx, np.real(corr)**2 + np.imag(corr)**2)
-plt.title(f"Real(corr)$^2$ + Imag(corr)$^2$, shifted")
-plt.xlabel("Seconds")
+plt.plot([max_corr]*100,np.linspace(np.min(np.real(corr)**2 + np.imag(corr)**2), np.max(np.real(corr)**2 + np.imag(corr)**2),100),ls = '--',color = 'orange')
+plt.title(f"Real(corr)$^2$ + Imag(corr)$^2$: shifted") #! peak should be @ 0s
+plt.xlabel("Delay [sec]")
 plt.savefig("reportplots/magcorrshifted", dpi=300)
 plt.show()
 
